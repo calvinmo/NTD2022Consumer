@@ -1,0 +1,16 @@
+{
+  "rabbit_version":"3.7.19",
+  "users":[{"name":"deploy_user","password_hash":"4PqyvCUE+U2eBz2FWX1fdRHPiWk=","hashing_algorithm":"rabbit_password_hashing_md5","tags":"administrator"},{"name":"mq_user","password_hash":"4PqyvCUE+U2eBz2FWX1fdRHPiWk=","hashing_algorithm":"rabbit_password_hashing_md5","tags":""}],
+  "vhosts":[{"name":"test"}],
+  "permissions":[{"user":"deploy_user","vhost":"test","configure":".*","write":".*","read":".*"},{"user":"mq_user","vhost":"test","configure":"","write":".*","read":".*"}],
+  "global_parameters":[{"name":"cluster_name","value":"rabbit@rabbitmq"}],
+  "policies":[{"vhost":"test","name":"HA","pattern":".*","apply-to":"all","definition":{"ha-mode":"all"},"priority":0}],
+  "queues":[
+    {"name":"queue","vhost":"test","durable":true,"auto_delete":false,"arguments":{}}
+  ],
+  "exchanges":[
+  ],
+  "bindings":[
+    {"source":"exchange","vhost":"test","destination":"queue","destination_type":"queue","routing_key":"#","arguments":{}}
+  ]
+}

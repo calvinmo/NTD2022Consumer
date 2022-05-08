@@ -1,0 +1,26 @@
+version: '3.3'
+
+services:
+  rabbit:
+    image: rabbitmq:3.10-rc-management-alpine
+    hostname: rabbitmq
+    volumes:
+      - ./rabbitmq/definitions.json:/opt/rabbitmq/definitions.json
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      - RABBITMQ_NAME=rabbitmq
+
+  app:
+    build:
+      dockerfile: Dockerfile
+      context: .
+    environment:
+      RABBIT_URL: 'amqp://deploy_user:guest@rabbit/test'
+
+networks:
+  default:
+    external:
+      name: local.gray.net
