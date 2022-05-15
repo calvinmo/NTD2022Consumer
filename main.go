@@ -9,12 +9,11 @@ import (
 
 func main() {
 	rabbitURL := getEnv("RABBIT_URL")
-	fmt.Printf(rabbitURL)
+	fmt.Println(rabbitURL)
 	rabbitGateway := rabbit.New(rabbitURL)
-	rabbitGateway.Register("Incoming", func(data []byte) error {
-		message := string(data[:])
-		fmt.Printf("Message with body %s", message)
-		return rabbitGateway.Publish("Outgoing", message)
+	rabbitGateway.Register(func(data []byte) error {
+		fmt.Printf("Message with body %s\n", string(data[:]))
+		return rabbitGateway.Publish(data)
 	})
 	manager := asynctask.Manager{}
 	manager.Add(rabbitGateway)

@@ -1,9 +1,6 @@
 package rabbit
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/streadway/amqp"
 	asynctask "gray.net/lib-go-async-task-manager"
 	"gray.net/rabbit/v7"
@@ -14,14 +11,14 @@ type Handler func([]byte) error
 // Interface exposes basic publish and handle functionality on rabbit.
 type Interface interface {
 	asynctask.Task
-	Publish(messageType string, body interface{}) error
-	Register(messageType string, handler Handler)
+	Publish(body []byte) error
+	Register(handler Handler)
 }
 
 type Rabbit struct {
 	publisher *rabbit.MessagePublisher
 	consumer  *rabbit.Consumer
-	Handlers  map[string]Handler
+	Handler   Handler
 }
 
 func New(url string) Interface {
@@ -51,7 +48,7 @@ func newPublisher(url string) *rabbit.MessagePublisher {
 func newConsumer(url string, handler rabbit.MessageHandler) *rabbit.Consumer {
 	config := rabbit.ConsumerConfig{
 		Listeners: []*rabbit.Listener{{
-			Queue:        "consumer",
+			Queue:        "incoming",
 			Handler:      handler,
 			NumConsumers: 1,
 		}},
@@ -64,15 +61,7 @@ func newConsumer(url string, handler rabbit.MessageHandler) *rabbit.Consumer {
 }
 
 func (a *Rabbit) globalHandler(delivery amqp.Delivery) {
-	messageBodyType := getStringFromMessageHeader(&delivery, rabbit.HeaderMessageBodyType)
-
-	handler, ok := a.Handlers[messageBodyType]
-	if !ok {
-		rejectMessage(&delivery, fmt.Sprintf("no handler for message body type: %s", messageBodyType), false)
-		return
-	}
-
-	err := handler(delivery.Body)
+	err := a.Handler(delivery.Body)
 	switch {
 	case err == nil:
 		ackMessage(&delivery)
@@ -83,34 +72,21 @@ func (a *Rabbit) globalHandler(delivery amqp.Delivery) {
 	}
 }
 
-func (a *Rabbit) Publish(messageType string, x interface{}) error {
-	body, err := json.Marshal(x)
-	if err != nil {
-		return err
-	}
-
+func (a *Rabbit) Publish(x []byte) error {
 	msg := amqp.Publishing{
-		Body: body,
+		Body: x,
 		Headers: amqp.Table{
-			rabbit.HeaderMessageBodyType: messageType,
+			"processed": true,
 		},
 	}
 
-	return a.publisher.Publish("publish", "#", msg)
+	return a.publisher.Publish("amq.topic", "#", msg)
 }
 
 func (a *Rabbit) Run(stopCh, doneCh chan struct{}) {
 	a.consumer.Run(stopCh, doneCh)
 }
 
-func (a *Rabbit) Register(messageType string, handler Handler) {
-	if a.Handlers == nil {
-		a.Handlers = map[string]Handler{}
-	}
-
-	if a.Handlers[messageType] != nil {
-		fmt.Printf("duplicate handler registered: %s", messageType)
-	}
-
-	a.Handlers[messageType] = handler
+func (a *Rabbit) Register(handler Handler) {
+	a.Handler = handler
 }
